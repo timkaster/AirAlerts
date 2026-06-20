@@ -301,7 +301,7 @@ class AlertHoursApp(tk.Tk):
                 raise ValueError("start date must be before end date")
             validate_range(start_day, end_day)
         except ValueError as exc:
-            self.status_var.set(f"Date error: {exc}. Use YYYY-MM-DD and keep the range under 60 days.")
+            self.status_var.set(f"Date error: {exc}. Use YYYY-MM-DD and keep the range at 180 days or less.")
             return
 
         location_slug = self.slug_by_choice.get(self.region_var.get())
@@ -390,7 +390,7 @@ class AlertHoursApp(tk.Tk):
             left,
             70,
             anchor="w",
-            text=f"Weather proxy: {weather_slug}; precipitation from Open-Meteo. Range must be under 60 days.",
+            text=f"Weather proxy: {weather_slug}; precipitation from Open-Meteo. Range must be 180 days or less.",
             font=("Segoe UI", 9),
             fill="#4f5b66",
         )

@@ -22,7 +22,7 @@ python scripts\fetch_open_meteo_weather.py `
   --output data\processed\weather_precipitation_open_meteo.csv
 ```
 
-The script fetches only `precipitation_sum` for one region and refuses inclusive date ranges longer than 59 days. It uses one representative point per region, usually the regional capital. This is a regional proxy, not an area-weighted oblast average.
+The script fetches only `precipitation_sum` for one region and refuses inclusive date ranges longer than 180 days. It uses one representative point per region, usually the regional capital. This is a regional proxy, not an area-weighted oblast average.
 
 ## Stronger But Heavier Alternative: ERA5-Land
 

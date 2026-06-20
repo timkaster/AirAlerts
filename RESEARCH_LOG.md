@@ -108,7 +108,7 @@ Sources:
 Actions:
 - Selected Open-Meteo as the practical first data source.
 - Added `scripts/fetch_open_meteo_weather.py` to download daily precipitation for one requested region.
-- Added a guardrail so weather requests must cover fewer than 60 inclusive calendar days.
+- Added a guardrail so weather requests must cover no more than 180 inclusive calendar days.
 - Added `reports/weather_data_sources.md` explaining source tradeoffs.
 - Tested Open-Meteo daily API access for Kyiv and a sample multi-region pull before narrowing the scope.
 
@@ -122,7 +122,7 @@ Findings:
 
 Risks / Next Steps:
 - Fetch precipitation only for the exact region and date window being analyzed.
-- Keep weather requests under 60 days.
+- Keep weather requests at 180 days or less.
 - Map alert locations to weather regions before modeling.
 
 AI Assistance:
