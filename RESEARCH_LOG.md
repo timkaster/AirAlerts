@@ -93,3 +93,36 @@ Risks / Next Steps:
 
 AI Assistance:
 - Codex designed and implemented the parser, generated the processed CSV files, and documented dataset caveats.
+
+## 2026-06-20 - Historic Weather Data Source
+
+Goal:
+Find a daily historic weather source for Ukraine by region over the last four years.
+
+Sources:
+- Open-Meteo Historical Weather API documentation.
+- ECMWF ERA5-Land documentation.
+- NASA POWER Daily API documentation.
+- Meteostat Python documentation.
+
+Actions:
+- Selected Open-Meteo as the practical first data source.
+- Added `scripts/fetch_open_meteo_weather.py` to download daily weather by Ukrainian region using representative regional points.
+- Added `reports/weather_data_sources.md` explaining source tradeoffs.
+- Tested Open-Meteo daily API access for Kyiv and a sample multi-region pull.
+
+Assumptions:
+- For the first project version, a regional representative point is acceptable as a weather proxy.
+- If weather becomes central to the final claim, true oblast area averages should be produced from ERA5-Land and administrative boundaries.
+
+Findings:
+- Open-Meteo provides daily historical variables suitable for temperature, precipitation, snow, wind, humidity, pressure, radiation, and weather-code features.
+- The API rate-limits long multi-region pulls, so the downloader caches per-region JSON and can be resumed.
+
+Risks / Next Steps:
+- Resume the full Open-Meteo download gently with `--chunk-size 1 --sleep-seconds 30`.
+- Consider reducing variables or splitting the date range if rate limits continue.
+- Map alert locations to weather regions before modeling.
+
+AI Assistance:
+- Codex researched weather-data options, built the Open-Meteo downloader, and documented source tradeoffs.
