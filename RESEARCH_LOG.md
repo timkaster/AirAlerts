@@ -97,7 +97,7 @@ AI Assistance:
 ## 2026-06-20 - Historic Weather Data Source
 
 Goal:
-Find a daily historic weather source for Ukraine by region over the last four years.
+Find a daily historic weather source for Ukraine and implement a minimal fetch path for precipitation features.
 
 Sources:
 - Open-Meteo Historical Weather API documentation.
@@ -107,22 +107,23 @@ Sources:
 
 Actions:
 - Selected Open-Meteo as the practical first data source.
-- Added `scripts/fetch_open_meteo_weather.py` to download daily weather by Ukrainian region using representative regional points.
+- Added `scripts/fetch_open_meteo_weather.py` to download daily precipitation for one requested region.
+- Added a guardrail so weather requests must cover fewer than 60 inclusive calendar days.
 - Added `reports/weather_data_sources.md` explaining source tradeoffs.
-- Tested Open-Meteo daily API access for Kyiv and a sample multi-region pull.
+- Tested Open-Meteo daily API access for Kyiv and a sample multi-region pull before narrowing the scope.
 
 Assumptions:
 - For the first project version, a regional representative point is acceptable as a weather proxy.
 - If weather becomes central to the final claim, true oblast area averages should be produced from ERA5-Land and administrative boundaries.
 
 Findings:
-- Open-Meteo provides daily historical variables suitable for temperature, precipitation, snow, wind, humidity, pressure, radiation, and weather-code features.
-- The API rate-limits long multi-region pulls, so the downloader caches per-region JSON and can be resumed.
+- Open-Meteo provides daily `precipitation_sum` suitable for a lightweight weather feature.
+- Broad multi-region/multi-year pulls are unnecessary for the current analysis and can trigger rate limits.
 
 Risks / Next Steps:
-- Resume the full Open-Meteo download gently with `--chunk-size 1 --sleep-seconds 30`.
-- Consider reducing variables or splitting the date range if rate limits continue.
+- Fetch precipitation only for the exact region and date window being analyzed.
+- Keep weather requests under 60 days.
 - Map alert locations to weather regions before modeling.
 
 AI Assistance:
-- Codex researched weather-data options, built the Open-Meteo downloader, and documented source tradeoffs.
+- Codex researched weather-data options, built the scoped Open-Meteo precipitation downloader, and documented source tradeoffs.

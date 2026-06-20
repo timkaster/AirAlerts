@@ -1,6 +1,6 @@
 # Historic Weather Data Sources For Ukraine
 
-Goal: daily weather by Ukrainian region for the last four years, suitable for joining to the air-alert dataset.
+Goal: daily precipitation for the requested Ukrainian region and modeling window, suitable for joining to the air-alert dataset.
 
 ## Recommended Source: Open-Meteo Historical Weather API
 
@@ -10,20 +10,19 @@ Use Open-Meteo for the project dataset.
 - Resolution: daily variables are available from hourly/reanalysis sources.
 - Practical access: no API key required for normal use.
 - Data basis: ERA5, ERA5-Land, and ECMWF IFS reanalysis/model products depending on variable and period.
-- Best project fit: easy to automate, daily resolution, complete regional point coverage.
+- Best project fit: easy to automate, daily resolution, and precise small-range requests.
 
 Project script:
 
 ```powershell
 python scripts\fetch_open_meteo_weather.py `
-  --start-date 2022-06-21 `
-  --end-date 2026-06-20 `
-  --output data\processed\weather_daily_regions_open_meteo.csv `
-  --chunk-size 1 `
-  --sleep-seconds 30
+  --region-slug kyiv_city `
+  --start-date 2026-05-01 `
+  --end-date 2026-05-31 `
+  --output data\processed\weather_precipitation_open_meteo.csv
 ```
 
-The script uses one representative point per region, usually the regional capital. This is a regional proxy, not an area-weighted oblast average.
+The script fetches only `precipitation_sum` for one region and refuses inclusive date ranges longer than 59 days. It uses one representative point per region, usually the regional capital. This is a regional proxy, not an area-weighted oblast average.
 
 ## Stronger But Heavier Alternative: ERA5-Land
 
@@ -46,15 +45,6 @@ Good for station-based or interpolated daily weather. It is convenient in Python
 
 ## Current Project Decision
 
-Use Open-Meteo first because it is fast to integrate and good enough for feature engineering:
-
-- daily temperature
-- precipitation
-- snowfall
-- wind speed and gusts
-- pressure
-- humidity
-- radiation
-- weather code
+Use Open-Meteo first because it is fast to integrate for the only weather feature currently needed: daily precipitation.
 
 If weather becomes a central explanatory variable in the final report, validate the most important findings against ERA5-Land area averages.
