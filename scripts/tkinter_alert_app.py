@@ -86,6 +86,46 @@ WEATHER_CLUES = [
 
 REGION_BY_SLUG = {region.region_slug: region for region in REGION_POINTS}
 
+UKRAINIAN_LATIN = str.maketrans(
+    {
+        "\u0430": "a",
+        "\u0431": "b",
+        "\u0432": "v",
+        "\u0433": "h",
+        "\u0491": "g",
+        "\u0434": "d",
+        "\u0435": "e",
+        "\u0454": "ie",
+        "\u0436": "zh",
+        "\u0437": "z",
+        "\u0438": "y",
+        "\u0456": "i",
+        "\u0457": "i",
+        "\u0439": "i",
+        "\u043a": "k",
+        "\u043b": "l",
+        "\u043c": "m",
+        "\u043d": "n",
+        "\u043e": "o",
+        "\u043f": "p",
+        "\u0440": "r",
+        "\u0441": "s",
+        "\u0442": "t",
+        "\u0443": "u",
+        "\u0444": "f",
+        "\u0445": "kh",
+        "\u0446": "ts",
+        "\u0447": "ch",
+        "\u0448": "sh",
+        "\u0449": "shch",
+        "\u044c": "",
+        "\u044e": "iu",
+        "\u044f": "ia",
+        "\u2019": "",
+        "'": "",
+    }
+)
+
 
 @dataclass(frozen=True)
 class DailyRow:
@@ -140,6 +180,22 @@ def build_location_choices(rows: list[DailyRow]) -> tuple[list[str], dict[str, s
         choices.append(label)
         slug_by_choice[label] = slug
     return choices, slug_by_choice
+
+
+def transliterate_ukrainian(value: str) -> str:
+    return value.casefold().translate(UKRAINIAN_LATIN)
+
+
+def filter_location_choices(choices: list[str], query: str) -> list[str]:
+    words = transliterate_ukrainian(query.replace("_", " ")).split()
+    if not words:
+        return choices
+    matches: list[str] = []
+    for choice in choices:
+        searchable = f"{choice} {transliterate_ukrainian(choice)}".replace("_", " ").casefold()
+        if all(word in searchable for word in words):
+            matches.append(choice)
+    return matches
 
 
 def infer_weather_region(location_slug: str, location_name: str) -> tuple[str, bool]:
@@ -235,7 +291,9 @@ class AlertHoursApp(tk.Tk):
         self.max_day = max(row.day for row in self.rows)
         self.location_choices, self.slug_by_choice = build_location_choices(self.rows)
         self.precip_cache: dict[tuple[str, date, date], list[tuple[date, float]]] = {}
+        self.filtered_location_choices = list(self.location_choices)
 
+        self.search_var = tk.StringVar()
         self.region_var = tk.StringVar(value=self._default_location_label())
         self.threat_var = tk.StringVar(value="air_raid")
         default_start = max(self.min_day, self.max_day - timedelta(days=29))
@@ -244,6 +302,7 @@ class AlertHoursApp(tk.Tk):
         self.status_var = tk.StringVar()
 
         self._build_layout()
+        self.search_var.trace_add("write", self._on_search_changed)
         self.draw_graph()
 
     def _default_location_label(self) -> str:
@@ -256,17 +315,22 @@ class AlertHoursApp(tk.Tk):
         controls = ttk.Frame(self, padding=10)
         controls.pack(fill=tk.X)
 
-        ttk.Label(controls, text="Alarm region").grid(row=0, column=0, sticky="w")
-        region = ttk.Combobox(
+        ttk.Label(controls, text="Search region").grid(row=0, column=0, sticky="w")
+        search = ttk.Entry(controls, textvariable=self.search_var, width=26)
+        search.grid(row=1, column=0, sticky="ew", padx=(0, 10))
+        search.bind("<Return>", self._select_first_search_match)
+
+        ttk.Label(controls, text="Alarm region").grid(row=0, column=1, sticky="w")
+        self.region_combo = ttk.Combobox(
             controls,
             textvariable=self.region_var,
-            values=self.location_choices,
+            values=self.filtered_location_choices,
             state="readonly",
             width=68,
         )
-        region.grid(row=1, column=0, sticky="ew", padx=(0, 10))
+        self.region_combo.grid(row=1, column=1, sticky="ew", padx=(0, 10))
 
-        ttk.Label(controls, text="Threat").grid(row=0, column=1, sticky="w")
+        ttk.Label(controls, text="Threat").grid(row=0, column=2, sticky="w")
         threat = ttk.Combobox(
             controls,
             textvariable=self.threat_var,
@@ -274,16 +338,16 @@ class AlertHoursApp(tk.Tk):
             state="readonly",
             width=18,
         )
-        threat.grid(row=1, column=1, sticky="ew", padx=(0, 10))
+        threat.grid(row=1, column=2, sticky="ew", padx=(0, 10))
 
-        ttk.Label(controls, text="Start date").grid(row=0, column=2, sticky="w")
-        ttk.Entry(controls, textvariable=self.start_var, width=14).grid(row=1, column=2, padx=(0, 10))
+        ttk.Label(controls, text="Start date").grid(row=0, column=3, sticky="w")
+        ttk.Entry(controls, textvariable=self.start_var, width=14).grid(row=1, column=3, padx=(0, 10))
 
-        ttk.Label(controls, text="End date").grid(row=0, column=3, sticky="w")
-        ttk.Entry(controls, textvariable=self.end_var, width=14).grid(row=1, column=3, padx=(0, 10))
+        ttk.Label(controls, text="End date").grid(row=0, column=4, sticky="w")
+        ttk.Entry(controls, textvariable=self.end_var, width=14).grid(row=1, column=4, padx=(0, 10))
 
-        ttk.Button(controls, text="Draw graph", command=self.draw_graph).grid(row=1, column=4, sticky="ew")
-        controls.columnconfigure(0, weight=1)
+        ttk.Button(controls, text="Draw graph", command=self.draw_graph).grid(row=1, column=5, sticky="ew")
+        controls.columnconfigure(1, weight=1)
 
         self.canvas = tk.Canvas(self, background="white", highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 8))
@@ -291,6 +355,21 @@ class AlertHoursApp(tk.Tk):
 
         status = ttk.Label(self, textvariable=self.status_var, padding=(10, 0, 10, 8))
         status.pack(fill=tk.X)
+
+    def _on_search_changed(self, *_args: object) -> None:
+        self.filtered_location_choices = filter_location_choices(self.location_choices, self.search_var.get())
+        self.region_combo.configure(values=self.filtered_location_choices)
+        if not self.filtered_location_choices:
+            self.status_var.set("No alarm regions match the search.")
+            return
+        if self.region_var.get() not in self.filtered_location_choices:
+            self.region_var.set(self.filtered_location_choices[0])
+        self.status_var.set(f"{len(self.filtered_location_choices)} matching alarm regions.")
+
+    def _select_first_search_match(self, _event: tk.Event) -> None:
+        if self.filtered_location_choices:
+            self.region_var.set(self.filtered_location_choices[0])
+            self.draw_graph()
 
     def draw_graph(self) -> None:
         try:
