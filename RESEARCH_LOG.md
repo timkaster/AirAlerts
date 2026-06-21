@@ -187,3 +187,34 @@ Risks / Next Steps:
 
 AI Assistance:
 - Codex implemented the baseline, ran it, and wrote the model report.
+
+## 2026-06-21 - Alert Location Geocoding
+
+Goal:
+Add latitude/longitude coordinates for alert locations so spatial features can be tested in the predictive model.
+
+Sources:
+- `data/processed/location_summary_clean.csv`
+- OpenStreetMap Nominatim geocoding service and usage policy.
+
+Actions:
+- Added `scripts/geocode_alert_locations.py`.
+- Geocoded 273 unique alert locations to `data/processed/location_geocodes.csv`.
+- Cached geocoding results locally and wrote `reports/geocoding_summary.md`.
+- Added manual query normalization for three old-format district names with missing hyphens.
+
+Assumptions:
+- Nominatim point results are acceptable for exploratory spatial features.
+- These coordinates are not official administrative polygon centroids.
+
+Findings:
+- 273 of 273 alert locations were geocoded successfully.
+- The generated coordinates can support latitude/longitude features and nearby-location alert-history features.
+
+Risks / Next Steps:
+- Review high-impact geocodes manually before making final claims.
+- Add spatial features to the predictive model and compare performance against the current baseline.
+- For formal spatial analysis, replace point geocodes with official administrative boundaries or centroids.
+
+AI Assistance:
+- Codex implemented the cached geocoder, ran it under Nominatim policy constraints, and documented coverage.
