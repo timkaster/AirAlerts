@@ -458,16 +458,97 @@ def write_importance(path: Path, rows: list[dict[str, object]]) -> None:
         writer.writerows(rows)
 
 
-def markdown_table(rows: list[dict[str, object]], limit: int = 12) -> str:
-    lines = ["| Rank | Feature group | RMSE increase when shuffled | Shuffled RMSE | Shuffled R2 |", "|---:|---|---:|---:|---:|"]
+def feature_group_label(group: object) -> str:
+    labels = {
+        "region": "Region",
+        "history:lag7_mean": "Recent alarm level: previous 7-day average",
+        "history:lag1_hours": "Yesterday's alarm hours",
+        "history:lag2_hours": "Alarm hours two days ago",
+        "history:lag30_mean": "Recent alarm level: previous 30-day average",
+        "history:lag1_starts": "Yesterday's number of alarm starts",
+        "history:yesterday_had_alarm": "Whether yesterday had any alarm",
+        "history:days_since_alarm": "Days since last alarm",
+        "calendar:weekday": "Day of week",
+        "calendar:weekend": "Weekend flag",
+        "calendar:month": "Month",
+        "calendar:seasonality": "Seasonal position in the year",
+        "weather:temperature": "Weather: temperature",
+        "weather:precipitation": "Weather: precipitation/rain/snow",
+        "weather:humidity": "Weather: humidity",
+        "weather:pressure": "Weather: pressure",
+        "weather:wind": "Weather: wind",
+        "weather:radiation": "Weather: sunlight/radiation",
+        "weather:cloud_cover": "Weather: cloudiness",
+        "weather:missing": "Weather data availability",
+        "weather:other": "Weather: other",
+    }
+    return labels.get(str(group), str(group).replace("_", " ").replace(":", ": "))
+
+
+def feature_label(name: str) -> str:
+    labels = {
+        "lag7_mean_hours": "previous 7-day average alarm hours",
+        "lag1_hours": "yesterday's alarm hours",
+        "lag2_hours": "alarm hours two days ago",
+        "lag30_mean_hours": "previous 30-day average alarm hours",
+        "lag1_alert_starts": "yesterday's number of alarm starts",
+        "days_since_alarm_capped30": "days since last alarm, capped at 30",
+        "yesterday_had_alarm": "whether yesterday had an alarm",
+        "weather_surface_pressure_mean": "surface pressure",
+        "weather_temperature_mean_c": "mean temperature",
+        "weather_humidity_mean_pct": "mean humidity",
+        "weather_wind_speed_max": "max wind speed",
+        "weather_shortwave_radiation_sum": "sunlight/radiation",
+        "weather_snowfall_mm": "snowfall",
+        "is_weekend": "weekend",
+    }
+    if name.startswith("weekday="):
+        weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        return weekdays[int(name.split("=", 1)[1])]
+    if name.startswith("month="):
+        months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
+        return months[int(name.split("=", 1)[1]) - 1]
+    return labels.get(name, name.replace("_", " "))
+
+
+def importance_strength(delta: float) -> str:
+    if delta >= 1.0:
+        return "very strong"
+    if delta >= 0.1:
+        return "meaningful"
+    if delta >= 0.02:
+        return "small"
+    if delta > -0.02:
+        return "tiny/negligible"
+    return "not useful here"
+
+
+def markdown_table(rows: list[dict[str, object]], limit: int = 10) -> str:
+    lines = [
+        "| Rank | Input tested | Effect on prediction | Extra error when shuffled |",
+        "|---:|---|---|---:|",
+    ]
     for rank, row in enumerate(rows[:limit], start=1):
+        increase = float(row["rmse_increase"])
         lines.append(
-            "| {rank} | `{group}` | {increase:.4f} | {rmse:.4f} | {r2:.3f} |".format(
+            "| {rank} | {group} | {strength} | {increase:+.3f} h/day |".format(
                 rank=rank,
-                group=row["feature_group"],
-                increase=float(row["rmse_increase"]),
-                rmse=float(row["permuted_rmse"]),
-                r2=float(row["permuted_r2"]),
+                group=feature_group_label(row["feature_group"]),
+                strength=importance_strength(increase),
+                increase=increase,
             )
         )
     return "\n".join(lines)
@@ -476,7 +557,37 @@ def markdown_table(rows: list[dict[str, object]], limit: int = 12) -> str:
 def coefficient_lines(items: list[tuple[str, float]]) -> str:
     if not items:
         return "- none"
-    return "\n".join(f"- `{name}`: {value:.3f}" for name, value in items)
+    return "\n".join(f"- {feature_label(name)}: {value:+.3f}" for name, value in items)
+
+
+def signed_coefficients(items: list[tuple[str, float]], direction: str, limit: int = 8) -> list[tuple[str, float]]:
+    if direction == "positive":
+        return [(name, value) for name, value in items if value > 0][:limit]
+    if direction == "negative":
+        return [(name, value) for name, value in items if value < 0][:limit]
+    raise ValueError(f"unknown coefficient direction: {direction}")
+
+
+def top_takeaways(importance_rows: list[dict[str, object]]) -> str:
+    positive = [row for row in importance_rows if float(row["rmse_increase"]) > 0.02]
+    weather = [row for row in importance_rows if str(row["feature_group"]).startswith("weather:")]
+    strongest = positive[:2]
+    lines: list[str] = []
+    if strongest:
+        readable = ", ".join(feature_group_label(row["feature_group"]) for row in strongest)
+        lines.append(f"- The model mostly uses recent alarm history: {readable}.")
+    else:
+        lines.append("- No feature group clearly improved the forecast in this validation window.")
+    best_weather = max(weather, key=lambda row: float(row["rmse_increase"]), default=None)
+    if best_weather and float(best_weather["rmse_increase"]) > 0.02:
+        lines.append(
+            f"- The strongest weather signal was {feature_group_label(best_weather['feature_group']).lower()}, "
+            f"but its effect was much smaller than recent alarm history."
+        )
+    else:
+        lines.append("- Weather features were weak in this run; they did not materially improve the forecast.")
+    lines.append("- Treat this as predictive evidence, not proof of cause and effect.")
+    return "\n".join(lines)
 
 
 def display_path(path: Path) -> str:
@@ -511,52 +622,69 @@ def render_report(
         if weather_rows
         else "Weather file was not available, so the model used only region, calendar, and alert-history features."
     )
+    best_label = feature_group_label(best)
     return f"""# Predictive Model: Daily Alert Hours
 
-Threat type: `{threat_type}`  
-Target: same-day alert hours per selected location and date  
-Locations: {len(locations)} highest-total locations  
-Date span: {min_day.isoformat()} to {max_day.isoformat()}  
-Test window: {test_start.isoformat()} to {max_day.isoformat()}  
-Model: dependency-free linear SGD regressor with chronological validation  
-Training: {epochs} epochs, learning rate {learning_rate}  
+## Short Answer
 
-## What The Model Is For
+The model can predict daily alarm hours reasonably well, but the useful signal is mostly yesterday and the previous week of alarms. Weather features are present in the model, but they are weak compared with recent alarm history.
 
-This is a predictive baseline for understanding which inputs help forecast alert hours. It is not a causal model: a feature can improve prediction without causing alarms, and a real cause can look weak if it is already captured by region/history.
+{top_takeaways(importance_rows)}
+
+## What Was Predicted
+
+- Target: same-day alert hours for a selected location and date
+- Threat type: `{threat_type}`
+- Locations included: top {len(locations)} locations by total alert duration
+- Training period: {min_day.isoformat()} to {(test_start - timedelta(days=1)).isoformat()}
+- Test period: {test_start.isoformat()} to {max_day.isoformat()}
+- Model type: simple linear predictive baseline
 
 {weather_note}
 
-## Test Metrics
+## Most Important Inputs
 
-- Rows in test window: {full_metrics.rows:,}
-- Mean target: {full_metrics.mean_target:.3f} h/day
-- Mean prediction: {full_metrics.mean_prediction:.3f} h/day
-- RMSE: {full_metrics.rmse:.3f} h/day
-- MAE: {full_metrics.mae:.3f} h/day
-- R2 vs train-mean baseline: {full_metrics.r2:.3f}
-
-## Feature Importance By Permutation
-
-Higher positive values mean the model got worse when that group was shuffled in the held-out test window, so that group helped prediction more. Negative or near-zero values mean the model did not rely on that feature group in this validation window.
+The table shows what happens when each input group is shuffled in the test period. If shuffling a group makes the forecast much worse, the model was relying on that information.
 
 {markdown_table(importance_rows)}
 
-Full CSV: `{importance_display}`
+Most important input group in this run: **{best_label}**.
 
-## Reading The Result
+## How Good Was It?
 
-Most important group in this run: `{best}`.
+- Test rows: {full_metrics.rows:,}
+- Actual average: {full_metrics.mean_target:.2f} alarm hours/day
+- Predicted average: {full_metrics.mean_prediction:.2f} alarm hours/day
+- Average absolute error: {full_metrics.mae:.2f} hours/day
+- Typical large-error scale: {full_metrics.rmse:.2f} hours/day
+- Improvement over a simple average baseline: {full_metrics.r2:.1%}
 
-Use this ranking as evidence about predictive usefulness, not causality. In this run, recent alert history is the strongest signal, which means alert activity is temporally persistent. Weather variables can still be interesting, but if their permutation scores are small, they are not adding much beyond the model's geography, calendar, and recent-alert context.
+Plain English: the model captures broad patterns well, but day-to-day errors can still be several hours. That is expected for this kind of problem.
 
-## Largest Positive Non-Region Coefficients
+## Interpretation
 
-{coefficient_lines(positives)}
+This model is useful for understanding which inputs help prediction. It is not a causal model. A feature can help prediction without causing alarms, and a real cause can look weak if its effect is already captured by recent alarm history or region.
 
-## Largest Negative Non-Region Coefficients
+In this run, recent alert history is the strongest signal. That means alarm activity is temporally persistent: if a region had many alarm hours recently, the next day is more predictable from that recent pattern.
 
-{coefficient_lines(negatives)}
+Weather variables can still be explored, but they are not strong predictors here. Their small permutation scores mean precipitation, temperature, wind, pressure, humidity, and related weather fields added little once the model already knew location, calendar, and recent alarms.
+
+## Technical Details
+
+- Validation method: chronological holdout, not random split
+- Training: {epochs} epochs, learning rate {learning_rate}
+- Importance method: held-out permutation importance
+- Full importance CSV: `{importance_display}`
+
+## Model Coefficients
+
+These are secondary diagnostics, not the main conclusion. Positive values push predictions upward; negative values push them downward.
+
+Largest upward signals:
+{coefficient_lines(signed_coefficients(positives, "positive"))}
+
+Largest downward signals:
+{coefficient_lines(signed_coefficients(negatives, "negative"))}
 """
 
 

@@ -1,81 +1,88 @@
 # Predictive Model: Daily Alert Hours
 
-Threat type: `air_raid`  
-Target: same-day alert hours per selected location and date  
-Locations: 40 highest-total locations  
-Date span: 2022-03-15 to 2026-06-20  
-Test window: 2025-12-23 to 2026-06-20  
-Model: dependency-free linear SGD regressor with chronological validation  
-Training: 4 epochs, learning rate 0.01  
+## Short Answer
 
-## What The Model Is For
+The model can predict daily alarm hours reasonably well, but the useful signal is mostly yesterday and the previous week of alarms. Weather features are present in the model, but they are weak compared with recent alarm history.
 
-This is a predictive baseline for understanding which inputs help forecast alert hours. It is not a causal model: a feature can improve prediction without causing alarms, and a real cause can look weak if it is already captured by region/history.
+- The model mostly uses recent alarm history: Recent alarm level: previous 7-day average, Yesterday's alarm hours.
+- Weather features were weak in this run; they did not materially improve the forecast.
+- Treat this as predictive evidence, not proof of cause and effect.
+
+## What Was Predicted
+
+- Target: same-day alert hours for a selected location and date
+- Threat type: `air_raid`
+- Locations included: top 40 locations by total alert duration
+- Training period: 2022-03-15 to 2025-12-22
+- Test period: 2025-12-23 to 2026-06-20
+- Model type: simple linear predictive baseline
 
 Weather joined from `data\processed\weather_daily_regions_open_meteo.csv` (39,447 date-region rows).
 
-## Test Metrics
+## Most Important Inputs
 
-- Rows in test window: 7,200
-- Mean target: 9.926 h/day
-- Mean prediction: 10.554 h/day
-- RMSE: 4.973 h/day
-- MAE: 3.097 h/day
-- R2 vs train-mean baseline: 0.822
+The table shows what happens when each input group is shuffled in the test period. If shuffling a group makes the forecast much worse, the model was relying on that information.
 
-## Feature Importance By Permutation
+| Rank | Input tested | Effect on prediction | Extra error when shuffled |
+|---:|---|---|---:|
+| 1 | Recent alarm level: previous 7-day average | very strong | +2.045 h/day |
+| 2 | Yesterday's alarm hours | meaningful | +0.868 h/day |
+| 3 | Weather: temperature | tiny/negligible | +0.016 h/day |
+| 4 | Recent alarm level: previous 30-day average | tiny/negligible | +0.012 h/day |
+| 5 | Yesterday's number of alarm starts | tiny/negligible | +0.008 h/day |
+| 6 | Seasonal position in the year | tiny/negligible | +0.006 h/day |
+| 7 | Weekend flag | tiny/negligible | +0.002 h/day |
+| 8 | Weather: pressure | tiny/negligible | +0.001 h/day |
+| 9 | Day of week | tiny/negligible | +0.001 h/day |
+| 10 | Weather data availability | tiny/negligible | +0.000 h/day |
 
-Higher positive values mean the model got worse when that group was shuffled in the held-out test window, so that group helped prediction more. Negative or near-zero values mean the model did not rely on that feature group in this validation window.
+Most important input group in this run: **Recent alarm level: previous 7-day average**.
 
-| Rank | Feature group | RMSE increase when shuffled | Shuffled RMSE | Shuffled R2 |
-|---:|---|---:|---:|---:|
-| 1 | `history:lag7_mean` | 2.0450 | 7.0178 | 0.645 |
-| 2 | `history:lag1_hours` | 0.8678 | 5.8405 | 0.754 |
-| 3 | `weather:temperature` | 0.0157 | 4.9885 | 0.820 |
-| 4 | `history:lag30_mean` | 0.0116 | 4.9844 | 0.821 |
-| 5 | `history:lag1_starts` | 0.0081 | 4.9809 | 0.821 |
-| 6 | `calendar:seasonality` | 0.0058 | 4.9786 | 0.821 |
-| 7 | `calendar:weekend` | 0.0017 | 4.9745 | 0.821 |
-| 8 | `weather:pressure` | 0.0013 | 4.9741 | 0.822 |
-| 9 | `calendar:weekday` | 0.0007 | 4.9735 | 0.822 |
-| 10 | `weather:missing` | 0.0000 | 4.9728 | 0.822 |
-| 11 | `weather:wind` | -0.0005 | 4.9723 | 0.822 |
-| 12 | `weather:humidity` | -0.0006 | 4.9721 | 0.822 |
+## How Good Was It?
 
-Full CSV: `reports\predictive_model_feature_importance.csv`
+- Test rows: 7,200
+- Actual average: 9.93 alarm hours/day
+- Predicted average: 10.55 alarm hours/day
+- Average absolute error: 3.10 hours/day
+- Typical large-error scale: 4.97 hours/day
+- Improvement over a simple average baseline: 82.2%
 
-## Reading The Result
+Plain English: the model captures broad patterns well, but day-to-day errors can still be several hours. That is expected for this kind of problem.
 
-Most important group in this run: `history:lag7_mean`.
+## Interpretation
 
-Use this ranking as evidence about predictive usefulness, not causality. In this run, recent alert history is the strongest signal, which means alert activity is temporally persistent. Weather variables can still be interesting, but if their permutation scores are small, they are not adding much beyond the model's geography, calendar, and recent-alert context.
+This model is useful for understanding which inputs help prediction. It is not a causal model. A feature can help prediction without causing alarms, and a real cause can look weak if its effect is already captured by recent alarm history or region.
 
-## Largest Positive Non-Region Coefficients
+In this run, recent alert history is the strongest signal. That means alarm activity is temporally persistent: if a region had many alarm hours recently, the next day is more predictable from that recent pattern.
 
-- `lag7_mean_hours`: 1.986
-- `lag1_hours`: 1.201
-- `weather_surface_pressure_mean`: 0.538
-- `lag30_mean_hours`: 0.452
-- `weekday=3`: 0.347
-- `month=8`: 0.316
-- `lag2_hours`: 0.246
-- `weekday=2`: 0.239
-- `weather_shortwave_radiation_sum`: 0.236
-- `weekday=5`: 0.211
-- `month=11`: 0.201
-- `weekday=4`: 0.196
+Weather variables can still be explored, but they are not strong predictors here. Their small permutation scores mean precipitation, temperature, wind, pressure, humidity, and related weather fields added little once the model already knew location, calendar, and recent alarms.
 
-## Largest Negative Non-Region Coefficients
+## Technical Details
 
-- `days_since_alarm_capped30`: -0.280
-- `weather_temperature_mean_c`: -0.198
-- `lag1_alert_starts`: -0.170
-- `weather_humidity_mean_pct`: -0.089
-- `is_weekend`: -0.073
-- `weather_wind_speed_max`: -0.029
-- `month=12`: -0.009
-- `yesterday_had_alarm`: 0.013
-- `weather_snowfall_mm`: 0.014
-- `month=1`: 0.016
-- `month=3`: 0.018
-- `month=9`: 0.022
+- Validation method: chronological holdout, not random split
+- Training: 4 epochs, learning rate 0.01
+- Importance method: held-out permutation importance
+- Full importance CSV: `reports\predictive_model_feature_importance.csv`
+
+## Model Coefficients
+
+These are secondary diagnostics, not the main conclusion. Positive values push predictions upward; negative values push them downward.
+
+Largest upward signals:
+- previous 7-day average alarm hours: +1.986
+- yesterday's alarm hours: +1.201
+- surface pressure: +0.538
+- previous 30-day average alarm hours: +0.452
+- Thursday: +0.347
+- August: +0.316
+- alarm hours two days ago: +0.246
+- Wednesday: +0.239
+
+Largest downward signals:
+- days since last alarm, capped at 30: -0.280
+- mean temperature: -0.198
+- yesterday's number of alarm starts: -0.170
+- mean humidity: -0.089
+- weekend: -0.073
+- max wind speed: -0.029
+- December: -0.009
