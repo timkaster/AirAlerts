@@ -1,9 +1,10 @@
-"""Fetch daily precipitation for one Ukrainian region from Open-Meteo.
+"""Fetch daily weather features for one Ukrainian region from Open-Meteo.
 
 This intentionally fetches only the weather feature currently used by the app:
 
 - one requested region
-- precipitation only
+- precipitation
+- mean cloud cover
 
 Use `--list-regions` to see accepted region slugs.
 """
@@ -23,9 +24,10 @@ from urllib.request import urlopen
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-OUTPUT_PATH = PROJECT_ROOT / "data" / "processed" / "weather_precipitation_open_meteo.csv"
+OUTPUT_PATH = PROJECT_ROOT / "data" / "processed" / "weather_open_meteo.csv"
 API_URL = "https://archive-api.open-meteo.com/v1/archive"
 TIMEZONE = "Europe/Kyiv"
+DAILY_VARIABLES = "precipitation_sum,cloud_cover_mean"
 
 
 @dataclass(frozen=True)
@@ -77,7 +79,7 @@ def request_precipitation(region: RegionPoint, start_date: date, end_date: date,
         "longitude": region.longitude,
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
-        "daily": "precipitation_sum",
+        "daily": DAILY_VARIABLES,
         "timezone": TIMEZONE,
     }
     url = f"{API_URL}?{urlencode(params)}"
@@ -111,11 +113,13 @@ def build_rows(region: RegionPoint, payload: dict[str, object]) -> list[dict[str
     assert isinstance(daily, dict)
     dates = daily["time"]
     precipitation = daily["precipitation_sum"]
+    cloud_cover = daily["cloud_cover_mean"]
     assert isinstance(dates, list)
     assert isinstance(precipitation, list)
+    assert isinstance(cloud_cover, list)
 
     rows: list[dict[str, object]] = []
-    for day, precipitation_sum in zip(dates, precipitation):
+    for day, precipitation_sum, cloud_cover_mean in zip(dates, precipitation, cloud_cover):
         rows.append(
             {
                 "date_kyiv": day,
@@ -125,6 +129,7 @@ def build_rows(region: RegionPoint, payload: dict[str, object]) -> list[dict[str
                 "latitude": region.latitude,
                 "longitude": region.longitude,
                 "precipitation_sum_mm": precipitation_sum,
+                "cloud_cover_mean_percent": cloud_cover_mean,
                 "source": "Open-Meteo Historical Weather API",
                 "timezone": TIMEZONE,
             }
@@ -141,6 +146,7 @@ def write_rows(output_path: Path, rows: list[dict[str, object]]) -> None:
         "latitude",
         "longitude",
         "precipitation_sum_mm",
+        "cloud_cover_mean_percent",
         "source",
         "timezone",
     ]
@@ -161,7 +167,7 @@ def fetch_precipitation(region_slug: str, start_date: date, end_date: date, outp
     payload = request_precipitation(region, start_date, end_date)
     rows = build_rows(region, payload)
     write_rows(output_path, rows)
-    print(f"Wrote {len(rows):,} precipitation rows to {output_path}")
+    print(f"Wrote {len(rows):,} weather rows to {output_path}")
 
 
 def main() -> None:

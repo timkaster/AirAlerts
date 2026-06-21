@@ -1,4 +1,4 @@
-"""Tkinter app for comparing daily alert hours and precipitation.
+"""Tkinter app for comparing daily alert hours with precipitation and cloudiness.
 
 Run from PyCharm with the project interpreter:
 
@@ -251,15 +251,23 @@ def pearson(xs: list[float], ys: list[float]) -> float | None:
     return num / (den_x * den_y)
 
 
-def conclusion_text(alert_series: list[tuple[date, float]], precip_series: list[tuple[date, float]]) -> str:
+def conclusion_text(
+    alert_series: list[tuple[date, float]],
+    precip_series: list[tuple[date, float]],
+    cloud_series: list[tuple[date, float]],
+) -> str:
     precip_by_day = dict(precip_series)
+    cloud_by_day = dict(cloud_series)
     pairs = [(alert_hours, precip_by_day.get(day, 0.0)) for day, alert_hours in alert_series]
     wet_alerts = [alert for alert, precip in pairs if precip > 0]
     dry_alerts = [alert for alert, precip in pairs if precip <= 0]
     wet_avg = sum(wet_alerts) / len(wet_alerts) if wet_alerts else 0.0
     dry_avg = sum(dry_alerts) / len(dry_alerts) if dry_alerts else 0.0
     corr = pearson([alert for alert, _ in pairs], [precip for _, precip in pairs])
+    cloud_pairs = [(alert_hours, cloud_by_day.get(day, 0.0)) for day, alert_hours in alert_series]
+    cloud_corr = pearson([alert for alert, _ in cloud_pairs], [cloud for _, cloud in cloud_pairs])
     corr_text = "not defined" if corr is None else f"{corr:.2f}"
+    cloud_corr_text = "not defined" if cloud_corr is None else f"{cloud_corr:.2f}"
     if corr is None:
         relationship = "not enough variation to estimate correlation"
     elif abs(corr) < 0.2:
@@ -271,7 +279,7 @@ def conclusion_text(alert_series: list[tuple[date, float]], precip_series: list[
     return (
         f"Conclusion: wet days averaged {wet_avg:.2f} alarm h/day ({len(wet_alerts)} days), "
         f"dry days averaged {dry_avg:.2f} h/day ({len(dry_alerts)} days); "
-        f"precipitation/alarm correlation r={corr_text}, {relationship}."
+        f"precipitation/alarm r={corr_text}, {relationship}; cloudiness/alarm r={cloud_corr_text}."
     )
 
 
@@ -290,7 +298,7 @@ class AlertHoursApp(tk.Tk):
         self.min_day = min(row.day for row in self.rows)
         self.max_day = max(row.day for row in self.rows)
         self.location_choices, self.slug_by_choice = build_location_choices(self.rows)
-        self.precip_cache: dict[tuple[str, date, date], list[tuple[date, float]]] = {}
+        self.weather_cache: dict[tuple[str, date, date], tuple[list[tuple[date, float]], list[tuple[date, float]]]] = {}
         self.filtered_location_choices = list(self.location_choices)
 
         self.search_var = tk.StringVar()
@@ -389,22 +397,27 @@ class AlertHoursApp(tk.Tk):
         location_name, series = make_series(self.rows, location_slug, self.threat_var.get(), start_day, end_day)
         weather_slug, matched = infer_weather_region(location_slug, location_name)
         try:
-            precip_series = self._get_precipitation_series(weather_slug, start_day, end_day)
+            precip_series, cloud_series = self._get_weather_series(weather_slug, start_day, end_day)
         except Exception as exc:
-            self.status_var.set(f"Could not fetch precipitation: {exc}")
+            self.status_var.set(f"Could not fetch weather data: {exc}")
             return
-        self._draw_combined(location_name, weather_slug, matched, series, precip_series)
+        self._draw_combined(location_name, weather_slug, matched, series, precip_series, cloud_series)
 
-    def _get_precipitation_series(self, weather_slug: str, start_day: date, end_day: date) -> list[tuple[date, float]]:
+    def _get_weather_series(
+        self, weather_slug: str, start_day: date, end_day: date
+    ) -> tuple[list[tuple[date, float]], list[tuple[date, float]]]:
         cache_key = (weather_slug, start_day, end_day)
-        if cache_key in self.precip_cache:
-            return self.precip_cache[cache_key]
+        if cache_key in self.weather_cache:
+            return self.weather_cache[cache_key]
         region = REGION_BY_SLUG[weather_slug]
         payload = request_precipitation(region, start_day, end_day)
         rows = build_rows(region, payload)
-        series = [(parse_day(str(row["date_kyiv"])), float(row["precipitation_sum_mm"] or 0.0)) for row in rows]
-        self.precip_cache[cache_key] = series
-        return series
+        precip_series = [(parse_day(str(row["date_kyiv"])), float(row["precipitation_sum_mm"] or 0.0)) for row in rows]
+        cloud_series = [
+            (parse_day(str(row["date_kyiv"])), float(row["cloud_cover_mean_percent"] or 0.0)) for row in rows
+        ]
+        self.weather_cache[cache_key] = (precip_series, cloud_series)
+        return precip_series, cloud_series
 
     def _draw_combined(
         self,
@@ -413,6 +426,7 @@ class AlertHoursApp(tk.Tk):
         weather_matched: bool,
         alert_series: list[tuple[date, float]],
         precip_series: list[tuple[date, float]],
+        cloud_series: list[tuple[date, float]],
     ) -> None:
         canvas = self.canvas
         canvas.delete("all")
@@ -462,7 +476,7 @@ class AlertHoursApp(tk.Tk):
             left,
             70,
             anchor="w",
-            text=f"Weather proxy: {weather_region.region_name_en} ({weather_region.representative_place}), {match_note}; precipitation from Open-Meteo.",
+            text=f"Weather proxy: {weather_region.region_name_en} ({weather_region.representative_place}), {match_note}; weather from Open-Meteo.",
             font=("Segoe UI", 9),
             fill="#4f5b66",
         )
@@ -492,6 +506,9 @@ class AlertHoursApp(tk.Tk):
         def precip_y(value: float) -> float:
             return precip_top + precip_h - (value / max_precip * precip_h)
 
+        def cloud_y(value: float) -> float:
+            return precip_top + precip_h - (min(100.0, max(0.0, value)) / 100.0 * precip_h)
+
         for index, (_day, value) in enumerate(alert_series):
             if value <= 0:
                 continue
@@ -515,6 +532,11 @@ class AlertHoursApp(tk.Tk):
         canvas.create_line(left, precip_top, left, precip_top + precip_h, fill="#202124")
         canvas.create_line(left, precip_top + precip_h, left + plot_w, precip_top + precip_h, fill="#202124")
         canvas.create_text(24, precip_top + precip_h / 2, text="Precip mm", angle=90, fill="#202124")
+        canvas.create_line(left + plot_w, precip_top, left + plot_w, precip_top + precip_h, fill="#202124")
+        for tick in range(0, 101, 25):
+            y = cloud_y(float(tick))
+            canvas.create_text(left + plot_w + 10, y, anchor="w", text=str(tick), fill="#5f6368", font=("Segoe UI", 9))
+        canvas.create_text(width - 18, precip_top + precip_h / 2, text="Cloud %", angle=90, fill="#202124")
 
         precip_by_day = dict(precip_series)
         for index, (day, _alert_value) in enumerate(alert_series):
@@ -525,21 +547,38 @@ class AlertHoursApp(tk.Tk):
             y = precip_y(value)
             canvas.create_rectangle(x, y, x + bar_width, precip_top + precip_h, fill="#74c476", outline="")
 
+        cloud_by_day = dict(cloud_series)
+        cloud_points: list[float] = []
+        for day, _alert_value in alert_series:
+            x, _ = alert_xy(day, 0)
+            cloud_points.extend([x, cloud_y(cloud_by_day.get(day, 0.0))])
+        if len(cloud_points) >= 4:
+            canvas.create_line(*cloud_points, fill="#7b4ab8", width=2.2, smooth=True)
+
         for index in range(0, len(alert_series), max(1, len(alert_series) // 8)):
             day = alert_series[index][0]
             x, _ = alert_xy(day, 0)
             canvas.create_text(x, precip_top + precip_h + 25, text=day.strftime("%Y-%m-%d"), angle=30, fill="#5f6368")
 
-        conclusion = conclusion_text(alert_series, precip_series)
+        conclusion = conclusion_text(alert_series, precip_series, cloud_series)
         canvas.create_text(
             left,
-            height - 52,
+            height - 58,
             anchor="w",
-            text="Blue bars: alarm hours. Red line: 7-day alarm average. Green bars: precipitation.",
+            text="Blue bars: alarm hours. Red line: 7-day alarm average. Green bars: precipitation. Purple line: mean cloud cover.",
             fill="#4f5b66",
+            width=plot_w,
         )
-        canvas.create_text(left, height - 28, anchor="w", text=conclusion, fill="#202124", font=("Segoe UI", 10, "bold"))
-        self.status_var.set(f"Loaded {len(self.rows):,} daily alert rows. Fetched precipitation for {weather_slug}.")
+        canvas.create_text(
+            left,
+            height - 40,
+            anchor="nw",
+            text=conclusion,
+            fill="#202124",
+            font=("Segoe UI", 10, "bold"),
+            width=plot_w,
+        )
+        self.status_var.set(f"Loaded {len(self.rows):,} daily alert rows. Fetched weather data for {weather_slug}.")
 
 
 def main() -> None:

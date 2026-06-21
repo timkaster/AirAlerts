@@ -126,3 +126,30 @@ Risks / Next Steps:
 
 AI Assistance:
 - Codex researched weather-data options, built the scoped Open-Meteo precipitation downloader, and documented source tradeoffs.
+
+## 2026-06-21 - Cloudiness Weather Feature
+
+Goal:
+Add cloudiness to the weather/alarm comparison graph.
+
+Sources:
+- Open-Meteo Historical Weather API documentation.
+
+Actions:
+- Extended the weather fetch path to request daily `cloud_cover_mean` alongside `precipitation_sum`.
+- Updated the Tkinter graph to draw mean cloud cover as a percentage line on the weather panel.
+- Kept the app scoped to the automatically inferred weather proxy for the selected alarm region and date range.
+
+Assumptions:
+- Daily mean cloud cover is a sufficient first-pass proxy for cloudiness.
+- Representative-point weather remains acceptable for exploratory comparisons.
+
+Findings:
+- Open-Meteo documents `cloud_cover_mean` as an additional daily variable in the Historical Weather API.
+
+Risks / Next Steps:
+- Cloud cover may affect visibility and some strike patterns indirectly, but correlation in this app is descriptive, not causal.
+- For final claims, compare against stronger controls such as region, weekday, seasonality, and war-phase changes.
+
+AI Assistance:
+- Codex located the relevant Open-Meteo variable, implemented the graph overlay, and updated project notes.
