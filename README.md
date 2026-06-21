@@ -24,6 +24,40 @@ Committed processed files:
 
 Ignored but recreatable files include event-level parsed rows, full interval tables, temporary weather samples, and smoke-test outputs.
 
+## Full Data Archive
+
+The full local `data/` folder, including ignored large processed files and raw Open-Meteo JSON responses, is stored outside Git and downloadable here:
+
+```text
+https://timkaster.org/downloads/airalerts/airalerts-data-20260621-224309.tar.gz
+```
+
+Checksum file:
+
+```text
+https://timkaster.org/downloads/airalerts/airalerts-data-20260621-224309.tar.gz.sha256
+```
+
+SHA-256:
+
+```text
+0c15ef845bc181d61ff99976b5b02f9ac4c8845393fc809c0729d4f18c95f56b
+```
+
+Restore it on a fresh machine:
+
+```powershell
+curl.exe -LO https://timkaster.org/downloads/airalerts/airalerts-data-20260621-224309.tar.gz
+curl.exe -LO https://timkaster.org/downloads/airalerts/airalerts-data-20260621-224309.tar.gz.sha256
+tar -xzf airalerts-data-20260621-224309.tar.gz
+```
+
+Verify on Linux/macOS before extracting:
+
+```bash
+sha256sum -c airalerts-data-20260621-224309.tar.gz.sha256
+```
+
 ## Recreate Core Alert Data
 
 Requires the Telegram export:
