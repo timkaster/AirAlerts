@@ -12,7 +12,7 @@ Time-series analysis of air raid alerts in Ukraine, built from a Telegram export
 
 ## Data Policy
 
-Raw and large intermediate data are ignored by git. The Telegram export is local and should not be committed.
+Raw and large intermediate data are ignored by git. The original Telegram export is kept in the external data archive, not in git.
 
 Committed processed files:
 
@@ -26,45 +26,45 @@ Ignored but recreatable files include event-level parsed rows, full interval tab
 
 ## Full Data Archive
 
-The full local `data/` folder, including ignored large processed files and raw Open-Meteo JSON responses, is stored outside Git and downloadable here:
+The full local `data/` folder, including ignored large processed files, raw Open-Meteo JSON responses, and the original Telegram export at `data/raw/telegram_export_2026-06-20/result.json`, is stored outside Git and downloadable here:
 
 ```text
-https://timkaster.org/downloads/airalerts/airalerts-data-20260621-224309.tar.gz
+https://timkaster.org/downloads/airalerts/airalerts-data-20260621-225317.tar.gz
 ```
 
 Checksum file:
 
 ```text
-https://timkaster.org/downloads/airalerts/airalerts-data-20260621-224309.tar.gz.sha256
+https://timkaster.org/downloads/airalerts/airalerts-data-20260621-225317.tar.gz.sha256
 ```
 
 SHA-256:
 
 ```text
-0c15ef845bc181d61ff99976b5b02f9ac4c8845393fc809c0729d4f18c95f56b
+be2da133f105c61ba8720752796268fcda9654dd894d833d1d094f63b2e576ca
 ```
 
 Restore it on a fresh machine:
 
 ```powershell
-curl.exe -LO https://timkaster.org/downloads/airalerts/airalerts-data-20260621-224309.tar.gz
-curl.exe -LO https://timkaster.org/downloads/airalerts/airalerts-data-20260621-224309.tar.gz.sha256
-tar -xzf airalerts-data-20260621-224309.tar.gz
+curl.exe -LO https://timkaster.org/downloads/airalerts/airalerts-data-20260621-225317.tar.gz
+curl.exe -LO https://timkaster.org/downloads/airalerts/airalerts-data-20260621-225317.tar.gz.sha256
+tar -xzf airalerts-data-20260621-225317.tar.gz
 ```
 
 Verify on Linux/macOS before extracting:
 
 ```bash
-sha256sum -c airalerts-data-20260621-224309.tar.gz.sha256
+sha256sum -c airalerts-data-20260621-225317.tar.gz.sha256
 ```
 
 ## Recreate Core Alert Data
 
-Requires the Telegram export:
+Requires the Telegram export. If you restored the full data archive above, use `data/raw/telegram_export_2026-06-20/result.json`.
 
 ```powershell
 python scripts\build_alert_dataset.py `
-  --source "C:\Users\timka\Downloads\Telegram Desktop\ChatExport_2026-06-20\result.json" `
+  --source data\raw\telegram_export_2026-06-20\result.json `
   --output-dir data\processed
 ```
 
