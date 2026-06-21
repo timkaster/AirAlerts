@@ -22,13 +22,21 @@ env/
 # Data and model artifacts
 data/raw/
 data/interim/
-data/processed/
 **/data/raw/
 **/data/interim/
-**/data/processed/
+data/processed/*
+**/data/processed/*
 models/
 artifacts/
 outputs/
+
+# Small final derived datasets kept for reproducibility.
+!data/processed/
+!data/processed/DATA_DICTIONARY.md
+!data/processed/daily_location_summary_clean.csv
+!data/processed/location_summary_clean.csv
+!data/processed/location_geocodes.csv
+!data/processed/weather_daily_regions_open_meteo.csv
 
 # Notebooks
 .ipynb_checkpoints/
