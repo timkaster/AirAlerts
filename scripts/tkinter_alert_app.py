@@ -1,4 +1,4 @@
-"""Tkinter app for comparing daily alert hours and precipitation by region.
+"""Tkinter app for comparing daily alert hours and precipitation.
 
 Run from PyCharm with the project interpreter:
 
@@ -18,41 +18,73 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from fetch_open_meteo_weather import REGION_POINTS, build_rows, request_precipitation, validate_range
+from fetch_open_meteo_weather import REGION_POINTS, build_rows, request_precipitation
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "daily_location_summary_clean.csv"
 DEFAULT_LOCATION_SLUG = "\u043c_\u041a\u0438\u0457\u0432"
-DEFAULT_WEATHER_REGION_SLUG = "kyiv_city"
+DEFAULT_WEATHER_REGION = "kyiv_city"
 
 ALERT_TO_WEATHER_REGION = {
     "\u043c_\u041a\u0438\u0457\u0432": "kyiv_city",
-    "Київська_область": "kyiv_oblast",
-    "Вінницька_область": "vinnytsia_oblast",
-    "Волинська_область": "volyn_oblast",
-    "Дніпропетровська_область": "dnipropetrovsk_oblast",
-    "Донецька_область": "donetsk_oblast",
-    "Житомирська_область": "zhytomyr_oblast",
-    "Закарпатська_область": "zakarpattia_oblast",
-    "Запорізька_область": "zaporizhzhia_oblast",
-    "ІваноФранківська_область": "ivano_frankivsk_oblast",
-    "Кіровоградська_область": "kirovohrad_oblast",
-    "Луганська_область": "luhansk_oblast",
-    "Львівська_область": "lviv_oblast",
-    "Миколаївська_область": "mykolaiv_oblast",
-    "Одеська_область": "odesa_oblast",
-    "Полтавська_область": "poltava_oblast",
-    "Рівненська_область": "rivne_oblast",
-    "Сумська_область": "sumy_oblast",
-    "Тернопільська_область": "ternopil_oblast",
-    "Харківська_область": "kharkiv_oblast",
-    "Херсонська_область": "kherson_oblast",
-    "Хмельницька_область": "khmelnytskyi_oblast",
-    "Черкаська_область": "cherkasy_oblast",
-    "Чернівецька_область": "chernivtsi_oblast",
-    "Чернігівська_область": "chernihiv_oblast",
+    "\u041a\u0438\u0457\u0432\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "kyiv_oblast",
+    "\u0412\u0456\u043d\u043d\u0438\u0446\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "vinnytsia_oblast",
+    "\u0412\u043e\u043b\u0438\u043d\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "volyn_oblast",
+    "\u0414\u043d\u0456\u043f\u0440\u043e\u043f\u0435\u0442\u0440\u043e\u0432\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "dnipropetrovsk_oblast",
+    "\u0414\u043e\u043d\u0435\u0446\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "donetsk_oblast",
+    "\u0416\u0438\u0442\u043e\u043c\u0438\u0440\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "zhytomyr_oblast",
+    "\u0417\u0430\u043a\u0430\u0440\u043f\u0430\u0442\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "zakarpattia_oblast",
+    "\u0417\u0430\u043f\u043e\u0440\u0456\u0437\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "zaporizhzhia_oblast",
+    "\u0406\u0432\u0430\u043d\u043e\u0424\u0440\u0430\u043d\u043a\u0456\u0432\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "ivano_frankivsk_oblast",
+    "\u041a\u0456\u0440\u043e\u0432\u043e\u0433\u0440\u0430\u0434\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "kirovohrad_oblast",
+    "\u041b\u0443\u0433\u0430\u043d\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "luhansk_oblast",
+    "\u041b\u044c\u0432\u0456\u0432\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "lviv_oblast",
+    "\u041c\u0438\u043a\u043e\u043b\u0430\u0457\u0432\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "mykolaiv_oblast",
+    "\u041e\u0434\u0435\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "odesa_oblast",
+    "\u041f\u043e\u043b\u0442\u0430\u0432\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "poltava_oblast",
+    "\u0420\u0456\u0432\u043d\u0435\u043d\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "rivne_oblast",
+    "\u0421\u0443\u043c\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "sumy_oblast",
+    "\u0422\u0435\u0440\u043d\u043e\u043f\u0456\u043b\u044c\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "ternopil_oblast",
+    "\u0425\u0430\u0440\u043a\u0456\u0432\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "kharkiv_oblast",
+    "\u0425\u0435\u0440\u0441\u043e\u043d\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "kherson_oblast",
+    "\u0425\u043c\u0435\u043b\u044c\u043d\u0438\u0446\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "khmelnytskyi_oblast",
+    "\u0427\u0435\u0440\u043a\u0430\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "cherkasy_oblast",
+    "\u0427\u0435\u0440\u043d\u0456\u0432\u0435\u0446\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "chernivtsi_oblast",
+    "\u0427\u0435\u0440\u043d\u0456\u0433\u0456\u0432\u0441\u044c\u043a\u0430_\u043e\u0431\u043b\u0430\u0441\u0442\u044c": "chernihiv_oblast",
 }
+
+WEATHER_CLUES = [
+    ("\u043a\u0438\u0457\u0432", "kyiv_city"),
+    ("\u0445\u0430\u0440\u043a\u0456\u0432", "kharkiv_oblast"),
+    ("\u0437\u0430\u043f\u043e\u0440\u0456\u0436", "zaporizhzhia_oblast"),
+    ("\u0437\u0430\u043f\u043e\u0440\u0456\u0437", "zaporizhzhia_oblast"),
+    ("\u0434\u043d\u0456\u043f\u0440", "dnipropetrovsk_oblast"),
+    ("\u043d\u0456\u043a\u043e\u043f\u043e\u043b", "dnipropetrovsk_oblast"),
+    ("\u043a\u0440\u0438\u0432", "dnipropetrovsk_oblast"),
+    ("\u043e\u0434\u0435\u0441", "odesa_oblast"),
+    ("\u043c\u0438\u043a\u043e\u043b\u0430", "mykolaiv_oblast"),
+    ("\u0445\u0435\u0440\u0441\u043e\u043d", "kherson_oblast"),
+    ("\u0441\u0443\u043c", "sumy_oblast"),
+    ("\u043f\u043e\u043b\u0442\u0430\u0432", "poltava_oblast"),
+    ("\u0447\u0435\u0440\u043d\u0456\u0433", "chernihiv_oblast"),
+    ("\u0447\u0435\u0440\u043a\u0430\u0441", "cherkasy_oblast"),
+    ("\u0436\u0438\u0442\u043e\u043c\u0438\u0440", "zhytomyr_oblast"),
+    ("\u0432\u0456\u043d\u043d\u0438\u0446", "vinnytsia_oblast"),
+    ("\u0445\u043c\u0435\u043b\u044c\u043d", "khmelnytskyi_oblast"),
+    ("\u0442\u0435\u0440\u043d\u043e\u043f", "ternopil_oblast"),
+    ("\u043b\u044c\u0432\u0456\u0432", "lviv_oblast"),
+    ("\u0456\u0432\u0430\u043d\u043e", "ivano_frankivsk_oblast"),
+    ("\u0440\u0456\u0432\u043d", "rivne_oblast"),
+    ("\u0432\u043e\u043b\u0438\u043d", "volyn_oblast"),
+    ("\u0443\u0436\u0433\u043e\u0440", "zakarpattia_oblast"),
+    ("\u0437\u0430\u043a\u0430\u0440\u043f", "zakarpattia_oblast"),
+    ("\u0434\u043e\u043d\u0435\u0446", "donetsk_oblast"),
+    ("\u043b\u0443\u0433\u0430\u043d", "luhansk_oblast"),
+    ("\u043a\u0440\u0438\u043c", "crimea"),
+]
+
+REGION_BY_SLUG = {region.region_slug: region for region in REGION_POINTS}
 
 
 @dataclass(frozen=True)
@@ -62,12 +94,6 @@ class DailyRow:
     location_name: str
     threat_type: str
     active_hours: float
-
-
-@dataclass(frozen=True)
-class PrecipitationRow:
-    day: date
-    precipitation_sum_mm: float
 
 
 def parse_day(value: str) -> date:
@@ -116,14 +142,17 @@ def build_location_choices(rows: list[DailyRow]) -> tuple[list[str], dict[str, s
     return choices, slug_by_choice
 
 
-def build_weather_choices() -> tuple[list[str], dict[str, str]]:
-    choices: list[str] = []
-    slug_by_choice: dict[str, str] = {}
-    for region in REGION_POINTS:
-        label = f"{region.region_name_en} ({region.region_slug})"
-        choices.append(label)
-        slug_by_choice[label] = region.region_slug
-    return choices, slug_by_choice
+def infer_weather_region(location_slug: str, location_name: str) -> tuple[str, bool]:
+    exact = ALERT_TO_WEATHER_REGION.get(location_slug)
+    if exact:
+        return exact, True
+
+    text = f"{location_slug} {location_name}".replace("_", " ").casefold()
+    for clue, weather_slug in WEATHER_CLUES:
+        if clue in text:
+            return weather_slug, True
+
+    return DEFAULT_WEATHER_REGION, False
 
 
 def make_series(
@@ -205,11 +234,9 @@ class AlertHoursApp(tk.Tk):
         self.min_day = min(row.day for row in self.rows)
         self.max_day = max(row.day for row in self.rows)
         self.location_choices, self.slug_by_choice = build_location_choices(self.rows)
-        self.weather_choices, self.weather_slug_by_choice = build_weather_choices()
         self.precip_cache: dict[tuple[str, date, date], list[tuple[date, float]]] = {}
 
         self.region_var = tk.StringVar(value=self._default_location_label())
-        self.weather_region_var = tk.StringVar(value=self._default_weather_label())
         self.threat_var = tk.StringVar(value="air_raid")
         default_start = max(self.min_day, self.max_day - timedelta(days=29))
         self.start_var = tk.StringVar(value=default_start.isoformat())
@@ -225,38 +252,21 @@ class AlertHoursApp(tk.Tk):
                 return label
         return self.location_choices[0]
 
-    def _default_weather_label(self) -> str:
-        for label, slug in self.weather_slug_by_choice.items():
-            if slug == DEFAULT_WEATHER_REGION_SLUG:
-                return label
-        return self.weather_choices[0]
-
     def _build_layout(self) -> None:
         controls = ttk.Frame(self, padding=10)
         controls.pack(fill=tk.X)
 
-        ttk.Label(controls, text="Region").grid(row=0, column=0, sticky="w")
+        ttk.Label(controls, text="Alarm region").grid(row=0, column=0, sticky="w")
         region = ttk.Combobox(
             controls,
             textvariable=self.region_var,
             values=self.location_choices,
             state="readonly",
-            width=58,
+            width=68,
         )
         region.grid(row=1, column=0, sticky="ew", padx=(0, 10))
-        region.bind("<<ComboboxSelected>>", self._on_alert_region_selected)
 
-        ttk.Label(controls, text="Weather region").grid(row=0, column=1, sticky="w")
-        weather_region = ttk.Combobox(
-            controls,
-            textvariable=self.weather_region_var,
-            values=self.weather_choices,
-            state="readonly",
-            width=32,
-        )
-        weather_region.grid(row=1, column=1, sticky="ew", padx=(0, 10))
-
-        ttk.Label(controls, text="Threat").grid(row=0, column=2, sticky="w")
+        ttk.Label(controls, text="Threat").grid(row=0, column=1, sticky="w")
         threat = ttk.Combobox(
             controls,
             textvariable=self.threat_var,
@@ -264,17 +274,16 @@ class AlertHoursApp(tk.Tk):
             state="readonly",
             width=18,
         )
-        threat.grid(row=1, column=2, sticky="ew", padx=(0, 10))
+        threat.grid(row=1, column=1, sticky="ew", padx=(0, 10))
 
-        ttk.Label(controls, text="Start date").grid(row=0, column=3, sticky="w")
-        ttk.Entry(controls, textvariable=self.start_var, width=14).grid(row=1, column=3, padx=(0, 10))
+        ttk.Label(controls, text="Start date").grid(row=0, column=2, sticky="w")
+        ttk.Entry(controls, textvariable=self.start_var, width=14).grid(row=1, column=2, padx=(0, 10))
 
-        ttk.Label(controls, text="End date").grid(row=0, column=4, sticky="w")
-        ttk.Entry(controls, textvariable=self.end_var, width=14).grid(row=1, column=4, padx=(0, 10))
+        ttk.Label(controls, text="End date").grid(row=0, column=3, sticky="w")
+        ttk.Entry(controls, textvariable=self.end_var, width=14).grid(row=1, column=3, padx=(0, 10))
 
-        ttk.Button(controls, text="Draw graph", command=self.draw_graph).grid(row=1, column=5, sticky="ew")
+        ttk.Button(controls, text="Draw graph", command=self.draw_graph).grid(row=1, column=4, sticky="ew")
         controls.columnconfigure(0, weight=1)
-        controls.columnconfigure(1, weight=1)
 
         self.canvas = tk.Canvas(self, background="white", highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 8))
@@ -283,55 +292,35 @@ class AlertHoursApp(tk.Tk):
         status = ttk.Label(self, textvariable=self.status_var, padding=(10, 0, 10, 8))
         status.pack(fill=tk.X)
 
-    def _on_alert_region_selected(self, _event: tk.Event) -> None:
-        location_slug = self.slug_by_choice.get(self.region_var.get())
-        weather_slug = ALERT_TO_WEATHER_REGION.get(location_slug or "")
-        if not weather_slug:
-            return
-        for label, slug in self.weather_slug_by_choice.items():
-            if slug == weather_slug:
-                self.weather_region_var.set(label)
-                return
-
     def draw_graph(self) -> None:
         try:
             start_day = parse_day(self.start_var.get())
             end_day = parse_day(self.end_var.get())
             if start_day > end_day:
                 raise ValueError("start date must be before end date")
-            validate_range(start_day, end_day)
         except ValueError as exc:
-            self.status_var.set(f"Date error: {exc}. Use YYYY-MM-DD and keep the range at 180 days or less.")
+            self.status_var.set(f"Date error: {exc}. Use YYYY-MM-DD.")
             return
 
         location_slug = self.slug_by_choice.get(self.region_var.get())
         if not location_slug:
-            self.status_var.set("Choose a region from the dropdown.")
-            return
-        weather_slug = self.weather_slug_by_choice.get(self.weather_region_var.get())
-        if not weather_slug:
-            self.status_var.set("Choose a weather region from the dropdown.")
+            self.status_var.set("Choose an alarm region from the dropdown.")
             return
 
-        location_name, series = make_series(
-            self.rows,
-            location_slug,
-            self.threat_var.get(),
-            start_day,
-            end_day,
-        )
+        location_name, series = make_series(self.rows, location_slug, self.threat_var.get(), start_day, end_day)
+        weather_slug, matched = infer_weather_region(location_slug, location_name)
         try:
             precip_series = self._get_precipitation_series(weather_slug, start_day, end_day)
         except Exception as exc:
             self.status_var.set(f"Could not fetch precipitation: {exc}")
             return
-        self._draw_combined(location_name, weather_slug, series, precip_series)
+        self._draw_combined(location_name, weather_slug, matched, series, precip_series)
 
     def _get_precipitation_series(self, weather_slug: str, start_day: date, end_day: date) -> list[tuple[date, float]]:
         cache_key = (weather_slug, start_day, end_day)
         if cache_key in self.precip_cache:
             return self.precip_cache[cache_key]
-        region = next(region for region in REGION_POINTS if region.region_slug == weather_slug)
+        region = REGION_BY_SLUG[weather_slug]
         payload = request_precipitation(region, start_day, end_day)
         rows = build_rows(region, payload)
         series = [(parse_day(str(row["date_kyiv"])), float(row["precipitation_sum_mm"] or 0.0)) for row in rows]
@@ -342,6 +331,7 @@ class AlertHoursApp(tk.Tk):
         self,
         location_name: str,
         weather_slug: str,
+        weather_matched: bool,
         alert_series: list[tuple[date, float]],
         precip_series: list[tuple[date, float]],
     ) -> None:
@@ -369,6 +359,9 @@ class AlertHoursApp(tk.Tk):
         max_index = max(range(len(alert_series)), key=lambda index: alert_series[index][1]) if alert_series else 0
         max_day, max_value = alert_series[max_index] if alert_series else (date.today(), 0.0)
 
+        weather_region = REGION_BY_SLUG[weather_slug]
+        match_note = "auto-matched" if weather_matched else "fallback proxy"
+
         canvas.create_text(
             left,
             25,
@@ -390,7 +383,7 @@ class AlertHoursApp(tk.Tk):
             left,
             70,
             anchor="w",
-            text=f"Weather proxy: {weather_slug}; precipitation from Open-Meteo. Range must be 180 days or less.",
+            text=f"Weather proxy: {weather_region.region_name_en} ({weather_region.representative_place}), {match_note}; precipitation from Open-Meteo.",
             font=("Segoe UI", 9),
             fill="#4f5b66",
         )

@@ -108,7 +108,7 @@ Sources:
 Actions:
 - Selected Open-Meteo as the practical first data source.
 - Added `scripts/fetch_open_meteo_weather.py` to download daily precipitation for one requested region.
-- Added a guardrail so weather requests must cover no more than 180 inclusive calendar days.
+- Updated the Tkinter app so the user selects only the alarm region and the app infers the weather proxy automatically.
 - Added `reports/weather_data_sources.md` explaining source tradeoffs.
 - Tested Open-Meteo daily API access for Kyiv and a sample multi-region pull before narrowing the scope.
 
@@ -121,9 +121,8 @@ Findings:
 - Broad multi-region/multi-year pulls are unnecessary for the current analysis and can trigger rate limits.
 
 Risks / Next Steps:
-- Fetch precipitation only for the exact region and date window being analyzed.
-- Keep weather requests at 180 days or less.
-- Map alert locations to weather regions before modeling.
+- Fetch precipitation only for the inferred weather region and selected date window.
+- Improve community/district-to-weather-region mapping when more geospatial metadata is available.
 
 AI Assistance:
 - Codex researched weather-data options, built the scoped Open-Meteo precipitation downloader, and documented source tradeoffs.

@@ -10,7 +10,7 @@ Use Open-Meteo for the project dataset.
 - Resolution: daily variables are available from hourly/reanalysis sources.
 - Practical access: no API key required for normal use.
 - Data basis: ERA5, ERA5-Land, and ECMWF IFS reanalysis/model products depending on variable and period.
-- Best project fit: easy to automate, daily resolution, and precise small-range requests.
+- Best project fit: easy to automate, daily resolution, and requested-region precipitation pulls.
 
 Project script:
 
@@ -22,7 +22,7 @@ python scripts\fetch_open_meteo_weather.py `
   --output data\processed\weather_precipitation_open_meteo.csv
 ```
 
-The script fetches only `precipitation_sum` for one region and refuses inclusive date ranges longer than 180 days. It uses one representative point per region, usually the regional capital. This is a regional proxy, not an area-weighted oblast average.
+The script fetches only `precipitation_sum` for one region. The Tkinter app chooses the weather proxy automatically from the selected alarm region where possible. It uses one representative point per region, usually the regional capital. This is a regional proxy, not an area-weighted oblast average.
 
 ## Stronger But Heavier Alternative: ERA5-Land
 

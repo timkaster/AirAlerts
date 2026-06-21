@@ -1,10 +1,9 @@
 """Fetch daily precipitation for one Ukrainian region from Open-Meteo.
 
-This intentionally fetches a small slice only:
+This intentionally fetches only the weather feature currently used by the app:
 
 - one requested region
 - precipitation only
-- up to 180 calendar days
 
 Use `--list-regions` to see accepted region slugs.
 """
@@ -27,7 +26,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = PROJECT_ROOT / "data" / "processed" / "weather_precipitation_open_meteo.csv"
 API_URL = "https://archive-api.open-meteo.com/v1/archive"
 TIMEZONE = "Europe/Kyiv"
-MAX_DAYS = 180
 
 
 @dataclass(frozen=True)
@@ -105,10 +103,7 @@ def request_precipitation(region: RegionPoint, start_date: date, end_date: date,
 def validate_range(start_date: date, end_date: date) -> int:
     if start_date > end_date:
         raise ValueError("start date must be before or equal to end date")
-    day_count = (end_date - start_date).days + 1
-    if day_count > MAX_DAYS:
-        raise ValueError(f"date range must be 180 days or less; got {day_count} days")
-    return day_count
+    return (end_date - start_date).days + 1
 
 
 def build_rows(region: RegionPoint, payload: dict[str, object]) -> list[dict[str, object]]:
