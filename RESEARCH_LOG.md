@@ -153,3 +153,37 @@ Risks / Next Steps:
 
 AI Assistance:
 - Codex located the relevant Open-Meteo variable, implemented the graph overlay, and updated project notes.
+
+## 2026-06-21 - Predictive Baseline For Feature Importance
+
+Goal:
+Build a predictive model to estimate which parameters help explain daily alert-hour forecasts.
+
+Sources:
+- `data/processed/daily_location_summary_clean.csv`
+- `data/processed/weather_daily_regions_open_meteo.csv`
+
+Actions:
+- Added `scripts/train_predictive_model.py`, a dependency-free linear SGD baseline.
+- Built a zero-filled daily panel for the top alert-duration locations.
+- Used a chronological holdout window rather than a random split.
+- Ranked feature groups by permutation: shuffle a group in the held-out test window and measure test RMSE change.
+- Generated `reports/predictive_model_air_raid.md` and `reports/predictive_model_feature_importance.csv`.
+
+Assumptions:
+- The model predicts same-day daily alert hours for exploratory feature ranking.
+- Weather variables are predictive inputs, not causal explanations.
+- Region, calendar, and recent alert history are expected to capture strong spatial and temporal persistence.
+
+Findings:
+- The first air-raid baseline reached R2 around 0.82 on the last 180 days.
+- The 7-day and 1-day lagged alert history features mattered most in held-out permutation importance.
+- Weather variables did not add much predictive value after geography, calendar, and recent alert history were included.
+
+Risks / Next Steps:
+- Add stronger validation with multiple rolling time splits.
+- Compare against nonlinear models if dependencies such as scikit-learn become available.
+- Treat feature importance as predictive usefulness, not causality.
+
+AI Assistance:
+- Codex implemented the baseline, ran it, and wrote the model report.
